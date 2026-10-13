@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Latepayy: free invoice creator</title>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Karla:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E9E7E2;--panel:#F8F7F4;--ink:#1B1B1B;--muted:#6A6862;--line:#D2CFC7;--acc:#1F4FFF;--paper:#fff;--pink:#111;
+--hf:'Familjen Grotesk','Trebuchet MS',sans-serif;--bf:'Karla','Segoe UI',sans-serif;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121316;--panel:#1B1D22;--ink:#EEEDE8;--muted:#9C9A92;--line:#33353C;--acc:#7F9BFF}}
+:root[data-theme="dark"]{--bg:#121316;--panel:#1B1D22;--ink:#EEEDE8;--muted:#9C9A92;--line:#33353C;--acc:#7F9BFF}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--bf)}
+.wrap{max-width:1200px;margin:0 auto;padding:22px 16px 60px}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+h1{font:700 2.2rem/1 var(--hf);margin:0;letter-spacing:-.02em}
+.head p{margin:4px 0 0;color:var(--muted)}
+.layout{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:960px){.layout{grid-template-columns:420px 1fr;align-items:start}}
+.form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+.form h2{font:700 1rem var(--hf);margin:18px 0 10px}
+.form h2:first-child{margin-top:0}
+label{display:grid;gap:3px;font-weight:600;font-size:.88rem;margin-bottom:10px}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;font-weight:400}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{display:grid;grid-template-columns:1fr 64px 92px 32px;gap:6px;margin-bottom:8px;align-items:center}
+.item button{background:none;border:0;cursor:pointer;color:var(--muted);font-size:1.2rem}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn.line{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.cap{display:grid;grid-template-columns:1fr 64px 92px 32px;gap:6px;font-size:.78rem;color:var(--muted);margin-bottom:4px}
+/* invoice paper */
+.paper{background:var(--paper);color:#1B1B1B;border-radius:6px;padding:clamp(18px,4vw,44px);box-shadow:0 1px 0 rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.12);min-height:520px;overflow-x:auto}
+.ph{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.ph h2{font:700 2.4rem/1 var(--hf);margin:0;color:#1F4FFF;letter-spacing:-.02em}
+.meta{text-align:right;font-size:.92rem}
+.meta b{display:block;font-size:1.05rem}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:28px 0}
+.parties small{color:#6A6862;display:block;margin-bottom:2px}
+.pre{white-space:pre-line}
+table{width:100%;border-collapse:collapse;min-width:420px}
+th{text-align:left;font-size:.82rem;color:#6A6862;font-weight:600;border-bottom:2px solid #1B1B1B;padding:6px 4px}
+td{padding:9px 4px;border-bottom:1px solid #E5E2DA;vertical-align:top}
+th.r,td.r{text-align:right}
+.tot{margin:18px 0 0 auto;width:min(280px,100%)}
+.tot div{display:flex;justify-content:space-between;padding:4px 0}
+.tot .g{border-top:2px solid #1B1B1B;margin-top:6px;padding-top:10px;font:700 1.4rem var(--hf);color:#1F4FFF}
+.notes{margin-top:28px;font-size:.92rem;color:#3a3935}
+@media (max-width:480px){.parties{grid-template-columns:1fr}.item{grid-template-columns:1fr 54px 80px 28px}.cap{grid-template-columns:1fr 54px 80px 28px}}
+[hidden]{display:none!important}
+.msg{font-size:.88rem;color:var(--muted);min-height:1.2em;margin:8px 0}
+.ok{color:var(--acc);font-weight:600}
+.h{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem}
+.h button{background:none;border:0;color:var(--acc);cursor:pointer;text-decoration:underline;padding:4px}
+.brand{margin-top:32px;padding-top:10px;border-top:1px solid #E5E2DA;font-size:.8rem;color:#8a877f;text-align:center}
+@media print{
+  body{background:#fff}.wrap{padding:0;max-width:none}.head,.form{display:none}.layout{display:block}
+  .paper{box-shadow:none;padding:0;min-height:0;border-radius:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Latepayy</h1><p>Fill in the form and your invoice builds as you type.</p></div>
+    <button class="btn" id="print">Print or save as PDF</button>
+  </div>
+  <div class="layout">
+    <form class="form" id="form" onsubmit="return false">
+      <h2>Your details</h2>
+      <label>Business or your name<input id="from" value="Latepayy"></label>
+      <label>Address and contact<textarea id="fromAddr" rows="3">Nairobi, Kenya
+hello@yourbusiness.com</textarea></label>
+      <h2>Client</h2>
+      <label>Client name<input id="to" value="Client Company Ltd"></label>
+      <label>Client address<textarea id="toAddr" rows="2">Client address here</textarea></label>
+      <h2>Invoice</h2>
+      <div class="two">
+        <label>Invoice number<input id="no" value="INV-001"></label>
+        <label>Currency
+          <select id="cur"><option>KES</option><option>USD</option><option>EUR</option><option>GBP</option><option>NGN</option><option>ZAR</option><option>INR</option></select>
+        </label>
+      </div>
+      <div class="two">
+        <label>Issue date<input type="date" id="issue"></label>
+        <label>Due date<input type="date" id="due"></label>
+      </div>
+      <h2>Items</h2>
+      <div class="cap"><span>Description</span><span>Qty</span><span>Rate</span><span></span></div>
+      <div id="items"></div>
+      <button class="btn line" id="addItem" type="button">Add item</button>
+      <h2>Tax and notes</h2>
+      <label>Tax or VAT %<input type="number" id="tax" min="0" max="100" value="16"></label>
+      <label>Payment details and notes<textarea id="notes" rows="3">Pay by M-Pesa or bank transfer.
+Bank: Your Bank, Account 0000000000
+Thank you for your business.</textarea></label>
+      <h2>Pro</h2>
+      <div id="proState"></div>
+      <div id="unlock">
+        <p id="noPay" class="msg">Loading checkout...</p>
+        <div id="payPP" hidden><button class="btn" type="button" id="buyPP">Get Pro with PayPal</button></div>
+        <div id="payPS" hidden style="margin-top:12px">
+          <label>Your email, for the receipt<input id="email" type="email" placeholder="you@example.com" autocomplete="email"></label>
+          <button class="btn" type="button" id="buy">Get Pro with M-Pesa</button>
+        </div>
+      </div>
+      <h2>Saved invoices</h2>
+      <button class="btn line" type="button" id="saveInv">Save this invoice</button>
+      <p id="proMsg" class="msg" aria-live="polite"></p>
+      <div id="hist"></div>
+    </form>
+    <section class="paper" id="paper" aria-label="Invoice preview"></section>
+  </div>
+</div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var KEY='billed:profile',items=[{d:'Website design',q:1,r:50000},{d:'Hosting setup',q:2,r:5000}];
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dt(s){if(!s)return '';var p=s.split('-');return new Date(p[0],p[1]-1,p[2]).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})}
+function money(x){try{return new Intl.NumberFormat(undefined,{style:'currency',currency:$('cur').value}).format(x)}catch(e){return x.toFixed(2)}}
+var today=new Date(),due=new Date();due.setDate(due.getDate()+14);
+$('issue').value=ymd(today);$('due').value=ymd(due);
+try{var p=JSON.parse(localStorage.getItem(KEY)||'null');if(p){['from','fromAddr','cur','notes','tax'].forEach(function(k){if(p[k]!=null)$(k).value=p[k]})}}catch(e){}
+function saveProfile(){try{localStorage.setItem(KEY,JSON.stringify({from:$('from').value,fromAddr:$('fromAddr').value,cur:$('cur').value,notes:$('notes').value,tax:$('tax').value}))}catch(e){}}
+function drawItems(){
+  $('items').innerHTML=items.map(function(it,i){
+    return '<div class="item"><input data-i="'+i+'" data-k="d" value="'+esc(it.d)+'" aria-label="Description"><input data-i="'+i+'" data-k="q" type="number" min="0" value="'+it.q+'" aria-label="Quantity"><input data-i="'+i+'" data-k="r" type="number" min="0" value="'+it.r+'" aria-label="Rate"><button type="button" data-rm="'+i+'" aria-label="Remove item">×</button></div>'}).join('');
+}
+function paper(){
+  var sub=0,rows=items.map(function(it){var a=(+it.q||0)*(+it.r||0);sub+=a;
+    return '<tr><td>'+esc(it.d)+'</td><td class="r">'+(+it.q||0)+'</td><td class="r">'+money(+it.r||0)+'</td><td class="r">'+money(a)+'</td></tr>'}).join('');
+  var t=Math.max(0,+$('tax').value||0),tax=sub*t/100;
+  $('paper').innerHTML=
+   '<div class="ph"><h2>Invoice</h2><div class="meta"><b>'+esc($('no').value)+'</b>Issued '+dt($('issue').value)+'<br>Due '+dt($('due').value)+'</div></div>'+
+   '<div class="parties"><div><small>From</small><b>'+esc($('from').value)+'</b><div class="pre">'+esc($('fromAddr').value)+'</div></div>'+
+   '<div><small>Billed to</small><b>'+esc($('to').value)+'</b><div class="pre">'+esc($('toAddr').value)+'</div></div></div>'+
+   '<table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+   '<div class="tot"><div><span>Subtotal</span><span>'+money(sub)+'</span></div>'+(t?'<div><span>Tax ('+t+'%)</span><span>'+money(tax)+'</span></div>':'')+
+   '<div class="g"><span>Total due</span><span>'+money(sub+tax)+'</span></div></div>'+
+   '<div class="notes pre">'+esc($('notes').value)+'</div>'+(isPro()?'':'<div class="brand">Made with Latepayy, the free invoice creator</div>');
+}
+$('form').addEventListener('input',function(e){
+  var i=e.target.getAttribute('data-i');
+  if(i!==null){var k=e.target.getAttribute('data-k');items[i][k]=(k==='d')?e.target.value:e.target.value}
+  saveProfile();paper();
+});
+$('items').addEventListener('click',function(e){
+  var r=e.target.getAttribute('data-rm');
+  if(r!==null){items.splice(+r,1);drawItems();paper()}
+});
+$('addItem').onclick=function(){items.push({d:'',q:1,r:0});drawItems();paper()};
+$('print').onclick=function(){window.print()};
+var HKEY='billed:history',PKEY='latepayy:protoken',FREE_LIMIT=3,CFG=null;
+function getTok(){try{return localStorage.getItem(PKEY)||''}catch(e){return ''}}
+var proOK=!!getTok();
+function isPro(){return proOK}
+function getH(){try{return JSON.parse(localStorage.getItem(HKEY)||'[]')}catch(e){return []}}
+function setH(h){try{localStorage.setItem(HKEY,JSON.stringify(h))}catch(e){}}
+function msg(t){$('proMsg').textContent=t}
+function moneyC(x,c){try{return new Intl.NumberFormat(undefined,{style:'currency',currency:c}).format(x)}catch(e){return x.toFixed(2)}}
+function snapshot(){var sub=0;items.forEach(function(it){sub+=(+it.q||0)*(+it.r||0)});var t=+$('tax').value||0;
+  return {id:String(Date.now()),no:$('no').value,to:$('to').value,toAddr:$('toAddr').value,cur:$('cur').value,issue:$('issue').value,due:$('due').value,tax:$('tax').value,notes:$('notes').value,items:JSON.parse(JSON.stringify(items)),total:sub*(1+t/100)}}
+function drawPro(){
+  var pro=isPro(),h=getH();
+  $('proState').innerHTML=pro?'<p class="ok">Pro is on: no branding and unlimited saved invoices.</p>':'<p class="msg">Free plan: Latepayy branding on invoices and up to '+FREE_LIMIT+' saved invoices.</p>';
+  $('unlock').hidden=pro;
+  var ps=CFG&&CFG.paystack,pp=CFG&&CFG.paypal;
+  $('payPS').hidden=!ps;$('payPP').hidden=!pp;$('noPay').hidden=!!(ps||pp);
+  $('noPay').textContent=CFG?'Pro checkout opens soon.':'Loading checkout...';
+  if(ps)$('buy').textContent='Get Pro for '+moneyC(ps.price,'KES')+' (M-Pesa or card)';
+  if(pp)$('buyPP').textContent='Get Pro for '+moneyC(pp.price,'USD')+' (PayPal or card)';
+  $('hist').innerHTML=h.length?h.map(function(x){return '<div class="h"><span><b>'+esc(x.no)+'</b> for '+esc(x.to)+', '+moneyC(x.total,x.cur)+'</span><button type="button" data-load="'+x.id+'">Load</button><button type="button" data-hdel="'+x.id+'">Delete</button></div>'}).join(''):'<p class="msg">No saved invoices yet.</p>';
+}
+$('saveInv').onclick=function(){
+  var h=getH();
+  if(!isPro()&&h.length>=FREE_LIMIT){msg('The free plan holds '+FREE_LIMIT+' invoices. Delete one or get Pro.');return}
+  var s=snapshot();h.unshift(s);setH(h);drawPro();msg('Saved '+s.no+'.');
+};
+$('hist').addEventListener('click',function(e){
+  var l=e.target.getAttribute('data-load'),d=e.target.getAttribute('data-hdel'),h=getH();
+  if(l){var x=h.filter(function(a){return a.id===l})[0];if(!x)return;
+    ['no','to','toAddr','cur','issue','due','tax','notes'].forEach(function(k){$(k).value=x[k]});
+    items=JSON.parse(JSON.stringify(x.items));drawItems();paper();msg('Loaded '+x.no+'.')}
+  if(d){setH(h.filter(function(a){return a.id!==d}));drawPro();msg('Deleted.')}
+});
+$('buy').onclick=function(){
+  var em=$('email').value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(em)){msg('Enter a valid email so Paystack can send your receipt.');return}
+  msg('Opening secure checkout...');
+  fetch('/.netlify/functions/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})})
+    .then(function(r){return r.json()})
+    .then(function(d){if(d.url){location.href=d.url}else{msg(d.error||'Checkout could not start. Try again.')}})
+    .catch(function(){msg('Checkout is not available right now. Try again in a moment.')});
+};
+function redeem(url){
+  $('proMsg').scrollIntoView({block:'center'});
+  msg('Confirming your payment...');
+  fetch(url)
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(d.token){try{localStorage.setItem(PKEY,d.token)}catch(e){}proOK=true;drawPro();paper();msg('Payment confirmed. Pro is on.')}
+      else{msg(d.error||'We could not confirm that payment yet. If you were charged, reload this page in a minute.')}
+    })
+    .catch(function(){msg('Network problem while confirming. Reload this page to try again.')});
+}
+$('buyPP').onclick=function(){
+  msg('Opening PayPal...');
+  fetch('/.netlify/functions/paypal',{method:'POST'})
+    .then(function(r){return r.json()})
+    .then(function(d){if(d.url){location.href=d.url}else{msg(d.error||'Checkout could not start. Try again.')}})
+    .catch(function(){msg('Checkout is not available right now. Try again in a moment.')});
+};
+function recheck(){
+  var t=getTok();if(!t)return;
+  fetch('/.netlify/functions/verify?token='+encodeURIComponent(t))
+    .then(function(r){return r.json()})
+    .then(function(d){if(d.pro===false){try{localStorage.removeItem(PKEY)}catch(e){}proOK=false;drawPro();paper()}})
+    .catch(function(){});
+}
+drawItems();drawPro();paper();
+fetch('/.netlify/functions/pay').then(function(r){return r.json()}).then(function(d){CFG=d;drawPro()}).catch(function(){});
+var qs=new URLSearchParams(location.search),ref=qs.get('reference')||qs.get('trxref'),ppo=qs.get('PayerID')&&qs.get('token');
+if(ref){redeem('/.netlify/functions/verify?reference='+encodeURIComponent(ref))}
+else if(ppo){redeem('/.netlify/functions/paypal?order='+encodeURIComponent(qs.get('token')))}
+if(ref||ppo){try{history.replaceState(null,'',location.pathname)}catch(e){}}else{recheck()}
+})();
+</script>
+</body>
+</html>
