@@ -60,7 +60,8 @@ exports.handler = async (event) => {
       });
       const d = await r.json();
       const link = (d.links || []).find(l => l.rel === 'payer-action' || l.rel === 'approve');
- return link ? out(200, { url: link.href }) : out(502, { error: 'Checkout could not start: ' + JSON.stringify(d).slice(0, 300) });
+      return link ? out(200, { url: link.href }) : out(502, { error: 'Checkout could not start: ' + JSON.stringify(d).slice(0, 300) });
+    }
 
     if (event.httpMethod === 'GET') {
       const id = String((event.queryStringParameters || {}).order || '').trim();
