@@ -178,7 +178,7 @@ function drawPro(){
 }
 $('saveInv').onclick=function(){
   var h=getH();
-  if(!isPro()&&h.length>=FREE_LIMIT){msg('The free plan holds '+FREE_LIMIT+' invoices.You're out of free trials. Get Pro to keep creating invoices. .');return}
+  if(!isPro()&&h.length>=FREE_LIMIT){msg("You're out of free trials. Get Pro to keep creating invoices.");return}
   var s=snapshot();h.unshift(s);setH(h);drawPro();msg('Saved '+s.no+'.');
 };
 $('hist').addEventListener('click',function(e){
