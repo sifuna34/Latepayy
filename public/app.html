@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Latepay</title>
+<style>
+:root{--b:#0f766e;--g:#64748b;--l:#e2e8f0}
+*{box-sizing:border-box}body{font:15px system-ui,sans-serif;margin:0;color:#0f172a;background:#f8fafc}
+main{max-width:760px;margin:0 auto;padding:16px}nav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+button,input{font:inherit;padding:9px 12px;border:1px solid var(--l);border-radius:8px;background:#fff}
+button{cursor:pointer}button.p{background:var(--b);color:#fff;border-color:var(--b)}button.on{border-color:var(--b);color:var(--b);font-weight:600}
+input{width:100%}.card{background:#fff;border:1px solid var(--l);border-radius:12px;padding:14px;margin:10px 0}
+.row{display:flex;gap:8px;margin:6px 0}.row>*{flex:1}.row>.s{flex:0 0 90px}
+.m{color:var(--g);font-size:13px}.pro{background:#fef3c7;border-radius:6px;padding:1px 6px;font-size:12px}
+table{width:100%;border-collapse:collapse}td,th{padding:6px;text-align:left;border-bottom:1px solid var(--l)}
+#pv{position:fixed;inset:0;background:#0008;overflow:auto;padding:16px;display:none}#pv>div{background:#fff;max-width:640px;margin:0 auto;padding:24px;border-radius:12px}
+@media print{#app{display:none}#pv{position:static;background:none;padding:0}.np{display:none}}
+</style></head><body>
+<main id="app"></main><div id="pv"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='PASTE_YOUR_SUPABASE_URL', SUPABASE_ANON_KEY='PASTE_YOUR_ANON_KEY';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let me=null,profile={},proUntil=null,clients=[],invoices=[],tab='inv',rows=[{d:'',q:1,p:''}];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isPro=()=>proUntil&&new Date(proUntil)>new Date();
+const lock=f=>$('v').innerHTML=`<div class="card">${f} is a Pro feature. <button class="p" onclick="show('pro')">See Pro</button></div>`;
+
+function authView(msg=''){$('app').innerHTML=`<h2>Latepay</h2><div class="card"><input id="em" type="email" placeholder="Email"><div class="row"><input id="pw" type="password" placeholder="Password (6+ characters)"></div><div class="row"><button class="p" onclick="login()">Sign in</button><button onclick="signup()">Create account</button></div><p class="m">${esc(msg)}</p></div>`}
+async function login(){const{error}=await sb.auth.signInWithPassword({email:$('em').value,password:$('pw').value});error?authView(error.message):boot()}
+async function signup(){const{data,error}=await sb.auth.signUp({email:$('em').value,password:$('pw').value});if(error)return authView(error.message);data.session?boot():authView('Check your email to confirm, then sign in.')}
+
+async function boot(){
+ const{data:{session}}=await sb.auth.getSession();
+ if(!session)return authView();
+ me=session.user;
+ const ref=new URLSearchParams(location.search).get('reference');
+ if(ref){await fetch('/.netlify/functions/pro-verify',{method:'POST',headers:{Authorization:'Bearer '+session.access_token},body:JSON.stringify({reference:ref})});history.replaceState({},'',location.pathname)}
+ await load();show(ref?'pro':'inv');
+}
+async function load(){
+ const[p,s,c,i]=await Promise.all([sb.from('profiles').select('*').eq('id',me.id).maybeSingle(),sb.from('subscriptions').select('pro_until').eq('user_id',me.id).maybeSingle(),sb.from('clients').select('*').order('name'),sb.from('invoices').select('*').order('created_at',{ascending:false})]);
+ profile=p.data||{};proUntil=s.data?.pro_until;clients=c.data||[];invoices=i.data||[];
+}
+function show(t){tab=t;const T={inv:'Invoices','new':'New',cli:'Clients',set:'Settings',pro:'Pro'};
+ $('app').innerHTML=`<h2>Latepay ${isPro()?'<span class="pro">PRO</span>':''}</h2><nav>${Object.entries(T).map(([k,v])=>`<button class="${k==t?'on':''}" onclick="show('${k}')">${v}</button>`).join('')}<button onclick="sb.auth.signOut().then(()=>{me=null;authView()})">Sign out</button></nav><div id="v"></div>`;
+ ({inv:vInv,'new':vNew,cli:vCli,set:vSet,pro:vPro})[t]()}
+
+function vInv(){
+ const tot=invoices.reduce((a,x)=>{a[x.paid?'p':'o']+=+x.total;return a},{p:0,o:0});
+ $('v').innerHTML=(isPro()?`<div class="card">Outstanding: <b>KES ${tot.o.toLocaleString()}</b> · Paid: <b>KES ${tot.p.toLocaleString()}</b></div>`:`<div class="card m">${invoices.length}/3 free invoices used. <a href="#" onclick="show('pro');return false">Get Pro</a> for unlimited invoices, totals and reminders.</div>`)+
+ `<div class="card"><table>${invoices.map(x=>`<tr><td>${esc(x.number)}<br><span class="m">${esc(x.client_name)}</span></td><td>KES ${(+x.total).toLocaleString()}<br><span class="m">${x.paid?'Paid':'Due '+(x.due_date||'-')}</span></td><td><button onclick="view('${x.id}')">View</button> ${x.paid?'':`<button onclick="paid('${x.id}')">Mark paid</button> <button onclick="remind('${x.id}')">Remind</button>`}</td></tr>`).join('')||'<tr><td class="m">No invoices yet</td></tr>'}</table></div>`}
+async function paid(id){await sb.from('invoices').update({paid:true}).eq('id',id);await load();show('inv')}
+function remind(id){if(!isPro())return show('pro');const x=invoices.find(i=>i.id==id);let n=(x.client_phone||'').replace(/\D/g,'');if(!n)return alert('This invoice has no client phone number.');if(n[0]=='0')n='254'+n.slice(1);
+ const m=`Hi ${x.client_name}, a friendly reminder that invoice ${x.number} for KES ${(+x.total).toLocaleString()} is due${x.due_date?' on '+x.due_date:''}. ${profile.pay_details||''} Thank you!`;window.open('https://wa.me/'+n+'?text='+encodeURIComponent(m))}
+
+function vNew(){
+ $('v').innerHTML=`<div class="card"><input id="cn" list="cl" placeholder="Client name" oninput="pick()"><datalist id="cl">${isPro()?clients.map(c=>`<option value="${esc(c.name)}">`).join(''):''}</datalist><div class="row"><input id="cp" placeholder="Client phone (for reminders)"><input id="dd" type="date"></div><div id="rw"></div><button onclick="rows.push({d:'',q:1,p:''});drawRows()">+ Item</button><h3 id="tt"></h3><button class="p" onclick="save()">Save &amp; preview</button><p id="er" class="m"></p></div>`;drawRows()}
+function drawRows(){$('rw').innerHTML=rows.map((r,i)=>`<div class="row"><input placeholder="Description" value="${esc(r.d)}" oninput="rows[${i}].d=this.value"><input class="s" type="number" min="1" value="${r.q}" oninput="rows[${i}].q=+this.value;tot()"><input class="s" type="number" min="0" placeholder="Price" value="${r.p}" oninput="rows[${i}].p=+this.value;tot()"></div>`).join('');tot()}
+const total=()=>rows.reduce((a,r)=>a+(r.q||0)*(r.p||0),0);
+function tot(){$('tt').textContent='Total: KES '+total().toLocaleString()}
+function pick(){const c=clients.find(c=>c.name==$('cn').value);if(c&&c.phone)$('cp').value=c.phone}
+async function save(){
+ const name=$('cn').value.trim();if(!name||!total())return $('er').textContent='Add a client and at least one priced item.';
+ const number='INV-'+String(invoices.length+1).padStart(3,'0');
+ const{data,error}=await sb.from('invoices').insert({number,client_name:name,client_phone:$('cp').value,due_date:$('dd').value||null,items:rows.filter(r=>r.d),total:total()}).select().single();
+ if(error)return error.message.includes('FREE_LIMIT')?(alert('You have used your 3 free invoices. Upgrade to Pro to continue.'),show('pro')):$('er').textContent=error.message;
+ if(isPro()&&!clients.find(c=>c.name==name))await sb.from('clients').insert({name,phone:$('cp').value});
+ rows=[{d:'',q:1,p:''}];await load();view(data.id)}
+
+function view(id){const x=invoices.find(i=>i.id==id),p=isPro();
+ $('pv').innerHTML=`<div>${p&&profile.logo?`<img src="${esc(profile.logo)}" style="max-height:60px"><br>`:''}<h2>${p&&profile.business_name?esc(profile.business_name):'Invoice'}</h2><p><b>${esc(x.number)}</b> · ${new Date(x.created_at).toLocaleDateString()}<br>Bill to: ${esc(x.client_name)}${x.due_date?'<br>Due: '+x.due_date:''}</p><table>${x.items.map(r=>`<tr><td>${esc(r.d)}</td><td>${r.q} × ${(+r.p).toLocaleString()}</td><td>${(r.q*r.p).toLocaleString()}</td></tr>`).join('')}</table><h3>Total: KES ${(+x.total).toLocaleString()}</h3>${p&&profile.pay_details?`<p>${esc(profile.pay_details)}</p>`:''}${p?'':'<p class="m">Made with Latepay</p>'}<div class="np"><button class="p" onclick="print()">Print / Save PDF</button> <button onclick="$('pv').style.display='none';show('inv')">Close</button></div></div>`;$('pv').style.display='block'}
+
+function vCli(){if(!isPro())return lock('Saved clients');
+ $('v').innerHTML=`<div class="card"><div class="row"><input id="n" placeholder="Name"><input id="ph" placeholder="Phone"></div><button class="p" onclick="addC()">Add client</button></div><div class="card">${clients.map(c=>`<div>${esc(c.name)} <span class="m">${esc(c.phone)}</span></div>`).join('')||'<span class="m">None yet</span>'}</div>`}
+async function addC(){if(!$('n').value.trim())return;await sb.from('clients').insert({name:$('n').value.trim(),phone:$('ph').value});await load();show('cli')}
+
+function vSet(){if(!isPro())return lock('Branding and payment details');
+ $('v').innerHTML=`<div class="card"><input id="bn" placeholder="Business name" value="${esc(profile.business_name)}"><div class="row"><input id="pd" placeholder="Payment details e.g. M-Pesa Till 123456" value="${esc(profile.pay_details)}"></div><p class="m">Logo (small image)</p><input id="lg" type="file" accept="image/*"><br><br><button class="p" onclick="saveS()">Save</button></div>`}
+async function saveS(){let logo=profile.logo||'';const f=$('lg').files[0];if(f)logo=await small(f);
+ await sb.from('profiles').upsert({id:me.id,business_name:$('bn').value,pay_details:$('pd').value,logo});await load();show('set')}
+const small=f=>new Promise(r=>{const i=new Image();i.onload=()=>{const k=Math.min(1,240/i.width),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/png'))};i.src=URL.createObjectURL(f)});
+
+function vPro(){$('v').innerHTML=`<div class="card"><h3>Latepay Pro · KES 400/month</h3><ul><li>Unlimited invoices</li><li>Your logo, business name and payment details on invoices</li><li>Saved clients</li><li>WhatsApp payment reminders</li><li>Totals: who owes you and who paid</li></ul>${isPro()?`<p>Pro active until <b>${new Date(proUntil).toLocaleDateString()}</b>. Paying again adds 30 days.</p>`:''}<button class="p" onclick="buy()">${isPro()?'Renew':'Upgrade'} with M-Pesa or card</button><p id="er" class="m"></p></div>`}
+async function buy(){const{data:{session}}=await sb.auth.getSession();const r=await fetch('/.netlify/functions/pro-init',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});const d=await r.json();d.url?location.href=d.url:$('er').textContent=d.error||'Could not start payment'}
+boot();
+</script></body></html>
